@@ -5,66 +5,50 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"regexp"
-	"strconv"
+	"roller-go/dice"
 	"time"
 )
 
+var Usage = func() {
+	fmt.Fprintf(flag.CommandLine.Output(), "")
+	flag.PrintDefaults()
+}
+
 func main() {
+
 	advantage := flag.Bool("advantage", false, "Roll with advantage")
 	disadvantage := flag.Bool("disadvantage", false, "Roll with disadvantage")
 
 	flag.Parse()
 	rand.Seed(time.Now().UnixNano())
 
-	diceStr := os.Args[len(os.Args)-1]
-	diceR := regexp.MustCompile("(\\d)d(\\d)([+|-])?(\\d)?")
-	if !diceR.MatchString(diceStr) {
-		fmt.Printf("%s is not a valid dice string\n", diceStr)
-		os.Exit(1)
-	}
-	parsed := diceR.FindAllStringSubmatch(diceStr, -1)
-
-	numDice, err := strconv.Atoi(parsed[0][1])
+	inputStr := os.Args[len(os.Args)-1]
+	dice, err := dice.Parse(inputStr)
 	panicIf(err)
 
-	sides, err := strconv.Atoi(parsed[0][2])
-	panicIf(err)
-
-	nums := make([]int, numDice)
 	fmt.Print("Rolled: ")
-	for n := 0; n < numDice; n++ {
-		i := randInt(sides)
-		fmt.Printf("%d ", i)
-		nums = append(nums, i)
-	}
-	fmt.Println()
+	nums := dice.Roll()
+	fmt.Println(nums)
 
 	result := 0
 	if *advantage {
-		result = max(nums)
+		adv := maxIn(dice.Roll())
+		orig := maxIn(nums)
+		result = max(orig, adv)
 	} else if *disadvantage {
-		result = min(nums)
+		disadv := minIn(dice.Roll())
+		orig := minIn(nums)
+		result = min(orig, disadv)
 	} else {
 		result = sum(nums)
 	}
 
-	mod := parsed[0][3]
-	modVal := parsed[0][4]
-	if mod != "" && modVal != "" {
-		modValue, err := strconv.Atoi(modVal)
-		panicIf(err)
-
-		if mod == "-" {
-			result -= modValue
-		} else {
-			result += modValue
-		}
-
-		fmt.Printf("Mod: %s%d\n", mod, modValue)
+	if dice.ModSign != "" {
+		fmt.Println("Mod:", dice.ModSign, dice.Mod)
+		result = dice.ModFn(result)
 	}
 
-	fmt.Printf("Result: %d\n", result)
+	fmt.Println("Result:", result)
 }
 
 func panicIf(err error) {
@@ -73,33 +57,45 @@ func panicIf(err error) {
 	}
 }
 
-func randInt(max int) int {
-	return (int)(1 + rand.Intn(max))
-}
-
 func sum(nums []int) int {
 	result := 0
-	for n := range nums {
-		result += nums[n]
+	for _, n := range nums {
+		result += n
 	}
 	return result
 }
 
-func min(nums []int) int {
-	result := 0
-	for n := range nums {
-		if nums[n] <= result {
-			result = nums[n]
+func min(a, b int) int {
+	if a <= b {
+		return a
+	} else {
+		return b
+	}
+}
+
+func minIn(nums []int) int {
+	result := nums[0]
+	for _, n := range nums {
+		if n <= result {
+			result = n
 		}
 	}
 	return result
 }
 
-func max(nums []int) int {
+func max(a, b int) int {
+	if a >= b {
+		return a
+	} else {
+		return b
+	}
+}
+
+func maxIn(nums []int) int {
 	result := 0
-	for n := range nums {
-		if nums[n] >= result {
-			result = nums[n]
+	for _, n := range nums {
+		if n >= result {
+			result = n
 		}
 	}
 	return result
