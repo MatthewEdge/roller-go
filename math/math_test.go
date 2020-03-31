@@ -1,20 +1,9 @@
-package main
+package math
 
 import (
 	"fmt"
 	"testing"
 )
-
-func TestMinIn(t *testing.T) {
-	tests := []struct {
-		in       []int
-		expected int
-	}{
-		{[]int{1, 2, 3}, 1},
-		{[]int{73, 111, 887493469785, 2}, 2},
-	}
-
-}
 
 func TestMin(t *testing.T) {
 	tests := []struct {
@@ -29,7 +18,7 @@ func TestMin(t *testing.T) {
 	for _, tt := range tests {
 		name := fmt.Sprintf("Min: %d | %d", tt.a, tt.b)
 		t.Run(name, func(t *testing.T) {
-			result := min(tt.a, tt.b)
+			result := Min(tt.a, tt.b)
 			if result != tt.expected {
 				fmt.Printf("Expected %d. Got %d\n", tt.expected, result)
 				t.Fail()
@@ -51,7 +40,7 @@ func TestMax(t *testing.T) {
 	for _, tt := range tests {
 		name := fmt.Sprintf("Max: %d | %d", tt.a, tt.b)
 		t.Run(name, func(t *testing.T) {
-			result := max(tt.a, tt.b)
+			result := Max(tt.a, tt.b)
 			if result != tt.out {
 				fmt.Printf("Expected %d. Got %d\n", tt.out, result)
 				t.Fail()
