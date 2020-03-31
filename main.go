@@ -1,60 +1,91 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"os"
 	"roller-go/dice"
 	"time"
 )
 
-var Usage = func() {
-	fmt.Fprintf(flag.CommandLine.Output(), "")
-	flag.PrintDefaults()
+type rollInput struct {
+	DiceString   string `json:"diceStr"`
+	Advantage    bool   `json:"advantage"`
+	Disadvantage bool   `json:"disadvantage"`
+}
+
+type rollOutput struct {
+	Rolls  []int `json:"rolls"`
+	Mod    int   `json:"mod"`
+	Result int   `json:"result"`
 }
 
 func main() {
-
-	advantage := flag.Bool("advantage", false, "Roll with advantage")
-	disadvantage := flag.Bool("disadvantage", false, "Roll with disadvantage")
-
-	flag.Parse()
-	rand.Seed(time.Now().UnixNano())
-
-	inputStr := os.Args[len(os.Args)-1]
-	dice, err := dice.Parse(inputStr)
-	panicIf(err)
-
-	fmt.Print("Rolled: ")
-	nums := dice.Roll()
-	fmt.Println(nums)
-
-	result := 0
-	if *advantage {
-		adv := maxIn(dice.Roll())
-		orig := maxIn(nums)
-		result = max(orig, adv)
-	} else if *disadvantage {
-		disadv := minIn(dice.Roll())
-		orig := minIn(nums)
-		result = min(orig, disadv)
-	} else {
-		result = sum(nums)
+	if err := run(); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 	}
-
-	if dice.ModSign != "" {
-		fmt.Println("Mod:", dice.ModSign, dice.Mod)
-		result = dice.ModFn(result)
-	}
-
-	fmt.Println("Result:", result)
 }
 
-func panicIf(err error) {
-	if err != nil {
-		panic(err)
+func run() error {
+
+	rand.Seed(time.Now().UnixNano())
+
+	router := http.NewServeMux()
+	router.HandleFunc("/roll", func(w http.ResponseWriter, r *http.Request) {
+		var req rollInput
+
+		err := json.NewDecoder(r.Body).Decode(&req)
+		defer r.Body.Close() // TODO is this necessary?
+		if err != nil {
+			w.WriteHeader(422)
+			fmt.Println("Failed to decode body to RollInput")
+			return
+		}
+
+		dice, err := dice.Parse(req.DiceString)
+		if err != nil {
+			w.WriteHeader(400)
+			fmt.Println("Failed to roll dice with input:", req.DiceString)
+			return
+		}
+
+		resp := &rollOutput{}
+		resp.Rolls = dice.Roll()
+		resp.Result = 0
+
+		if req.Advantage {
+			adv := maxIn(dice.Roll())
+			orig := maxIn(resp.Rolls)
+			resp.Result = max(orig, adv)
+		} else if req.Disadvantage {
+			disadv := minIn(dice.Roll())
+			orig := minIn(resp.Rolls)
+			resp.Result = min(orig, disadv)
+		} else {
+			resp.Result = sum(resp.Rolls)
+		}
+
+		if dice.ModSign != "" {
+			fmt.Println("Mod:", dice.ModSign, dice.Mod)
+			resp.Result = dice.ModFn(resp.Result)
+		}
+
+		fmt.Println(resp)
+		err = json.NewEncoder(w).Encode(resp)
+		if err != nil {
+			w.WriteHeader(500)
+			fmt.Println("Failed to serialize response", err)
+			return
+		}
+	})
+
+	if err := http.ListenAndServe(":8080", router); err != nil {
+		return err
 	}
+
+	return nil
 }
 
 func sum(nums []int) int {
