@@ -8,12 +8,12 @@ import (
 func TestParse(t *testing.T) {
 	tests := []struct {
 		diceStr   string
-		result    *DiceString
+		result    *rollReq
 		shouldErr bool
 	}{
 		{
 			"2d6",
-			&DiceString{
+			&rollReq{
 				Sides:   6,
 				NumDice: 2,
 				Mod:     0,
@@ -23,7 +23,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"d6",
-			&DiceString{
+			&rollReq{
 				Sides:   6,
 				NumDice: 1,
 				Mod:     0,
@@ -33,7 +33,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"2d20+49",
-			&DiceString{
+			&rollReq{
 				Sides:   20,
 				NumDice: 2,
 				Mod:     49,
@@ -43,14 +43,14 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"woops",
-			&DiceString{},
+			&rollReq{},
 			true,
 		},
 	}
 
 	for _, scenario := range tests {
 		t.Run(scenario.diceStr, func(t *testing.T) {
-			res, err := Parse(scenario.diceStr)
+			res, err := parse(scenario.diceStr)
 			if err != nil {
 				fmt.Println(err.Error())
 			}
@@ -78,7 +78,7 @@ func TestParse(t *testing.T) {
 	}
 }
 
-func diceEqual(a, b *DiceString) bool {
+func diceEqual(a, b *rollReq) bool {
 	if a == nil {
 		fmt.Println("diceEqual: a was nil!")
 		return false

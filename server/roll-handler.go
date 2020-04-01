@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"roller-go/dice"
-	diceMath "roller-go/math"
 )
 
 func (s *server) handleRoll() http.HandlerFunc {
@@ -17,9 +16,9 @@ func (s *server) handleRoll() http.HandlerFunc {
 	}
 
 	type response struct {
-		Rolls  []int `json:"rolls"`
-		Mod    int   `json:"mod"`
-		Result int   `json:"result"`
+		Rolls  []int  `json:"rolls"`
+		Mod    string `json:"mod"`
+		Result int    `json:"result"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -33,34 +32,27 @@ func (s *server) handleRoll() http.HandlerFunc {
 			return
 		}
 
-		dice, err := dice.Parse(req.DiceString)
+		var roll dice.RollResponse
+
+		if req.Advantage {
+			roll, err = dice.RollAdvantage(req.DiceString)
+		} else if req.Disadvantage {
+			roll, err = dice.RollDisadvantage(req.DiceString)
+		} else {
+			roll, err = dice.Roll(req.DiceString)
+		}
+
 		if err != nil {
 			w.WriteHeader(400)
 			fmt.Println("Failed to roll dice with input:", req.DiceString)
 			return
 		}
 
-		resp := &response{}
-		resp.Rolls = dice.Roll()
-		resp.Result = 0
-
-		if req.Advantage {
-			adv := diceMath.MaxIn(dice.Roll())
-			orig := diceMath.MaxIn(resp.Rolls)
-			resp.Result = diceMath.Max(orig, adv)
-		} else if req.Disadvantage {
-			disadv := diceMath.MinIn(dice.Roll())
-			orig := diceMath.MinIn(resp.Rolls)
-			resp.Result = diceMath.Min(orig, disadv)
-		} else {
-			resp.Result = diceMath.Sum(resp.Rolls)
+		resp := &response{
+			Rolls:  roll.Rolls,
+			Mod:    roll.Mod,
+			Result: roll.Total,
 		}
-
-		if dice.ModSign != "" {
-			fmt.Println("Mod:", dice.ModSign, dice.Mod)
-			resp.Result = dice.ModFn(resp.Result)
-		}
-
 		err = s.respond(w, resp)
 		if err != nil {
 			w.WriteHeader(500)

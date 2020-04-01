@@ -27,6 +27,27 @@ func TestMin(t *testing.T) {
 	}
 }
 
+func TestMinIn(t *testing.T) {
+	tests := []struct {
+		in       []int
+		expected int
+	}{
+		{[]int{1, 2, 3, 4}, 1},
+		{[]int{48, 2}, 2},
+		{[]int{5}, 5},
+	}
+
+	for _, tt := range tests {
+		name := fmt.Sprint("MinIn:", tt.in)
+		t.Run(name, func(t *testing.T) {
+			result := MinIn(tt.in)
+			if result != tt.expected {
+				t.Error("Expected", tt.expected, "but got", result)
+			}
+		})
+	}
+}
+
 func TestMax(t *testing.T) {
 	tests := []struct {
 		a   int
